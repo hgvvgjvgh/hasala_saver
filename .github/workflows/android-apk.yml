@@ -1,31 +1,50 @@
-name: Build Android APK
+name: Build Android APK (Debug)
 
 on:
+  workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.16.0'
+          channel: 'stable'
 
-      - name: Install dependencies
+      # يبني هيكل Flutter (android/, ios/, lib/ ...) إذا ناقص
+      - name: Bootstrap Flutter project
+        run: |
+          flutter --version
+          # أنشئ مجلد lib وانقل كل ملفات dart من الجذر داخله
+          mkdir -p lib
+          shopt -s nullglob
+          mv *.dart lib/ || true
+          # أنشئ هيكل المنصات إن لم يكن موجود
+          if [ ! -d "android" ]; then
+            flutter create . --platforms=android
+          fi
+
+      - name: Pub get
         run: flutter pub get
 
-      - name: Build APK
-        run: flutter build apk --release
+      - name: Build debug APK
+        run: flutter build apk --debug
 
       - name: Upload APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: app-release.apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: app-debug
+          path: build/app/outputs/flutter-apk/app-debug.apk
